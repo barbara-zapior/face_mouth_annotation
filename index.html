@@ -10,7 +10,7 @@
   </style>
 </head>
 <body>
-  <h2>Draw two rectangles: eyes (blue) and mouth (red)</h2>
+  <h2>Draw two rectangle AOIs: eyes (blue) and mouth (red)</h2>
   <canvas id="canvas" width="640" height="480"></canvas><br>
   <button id="clear">Clear</button>
   <button id="download">Download Rectangles</button>
@@ -49,6 +49,7 @@
 
     // Mouse events
     canvas.addEventListener("mousedown", e => {
+      if (drawnRects.length >= 2) return; // limit to 2 rectangles
       drawing = true;
       startX = e.offsetX;
       startY = e.offsetY;
@@ -82,6 +83,11 @@
 
     // Download button with normalized coordinates
     document.getElementById("download").onclick = () => {
+      if (drawnRects.length !== 2) {
+        alert("Please draw both rectangles: eyes and mouth.");
+        return;
+      }
+
       const normalized = drawnRects.map(r => ({
         x: r.x / canvas.width,
         y: r.y / canvas.height,
@@ -100,4 +106,6 @@
   </script>
 </body>
 </html>
+
+
 
