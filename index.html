@@ -1,179 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>Live Face Annotation (Eyes + Mouth)</title>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+  <meta charset="utf-8">
+  <title>Face Annotation (Local Only)</title>
   <style>
-    body { font-family: Arial, sans-serif; display:flex; flex-direction:column; align-items:center; padding:20px; }
-    canvas { border:1px solid #ccc; display:block; margin-top:10px; }
-    .controls { margin-top:10px; }
-    button { margin-right:8px; padding:8px 12px; }
-    .status { margin-top:8px; color:#333; }
+    body { font-family: sans-serif; text-align:center; padding:20px; }
+    canvas { border:1px solid #999; display:block; margin:10px auto; }
+    button { margin:5px; padding:8px 12px; }
   </style>
 </head>
 <body>
-  <h2>Draw two rectangles: Eyes (blue) then Mouth (red)</h2>
-  <div><small>Draw eyes first, then mouth. Click & drag to draw.</small></div>
-
-  <canvas id="canvas" width="640" height="480"></canvas>
-
-  <div class="controls">
-    <button id="submit">Submit</button>
-    <button id="clear">Clear</button>
-    <span class="status" id="status">0 submissions</span>
-  </div>
+  <h2>Draw two rectangles: eyes (blue) and mouth (red)</h2>
+  <canvas id="canvas" width="640" height="480"></canvas><br>
+  <button id="clear">Clear</button>
+  <button id="download">Download Rectangles</button>
 
   <script>
-    // ====== REPLACE the config object below with your firebaseConfig from the console ======
-const firebaseConfig = {
-  apiKey: "AIzaSyCnfTVT7FSqir2RXh9OW5AYfmkFBEahxAA",
-  authDomain: "facemouth-6c06f.firebaseapp.com",
-  databaseURL: "https://facemouth-6c06f-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "facemouth-6c06f",
-  storageBucket: "facemouth-6c06f.firebasestorage.app",
-  messagingSenderId: "601555823489",
-  appId: "1:601555823489:web:be59e876a3e4ac55b2d680",
-  measurementId: "G-ET7MJ67MZE"
-};
-    // ================================================================================
-
-    // initialize (compat)
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // Elements
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const submitBtn = document.getElementById('submit');
-    const clearBtn = document.getElementById('clear');
-    const statusSpan = document.getElementById('status');
-
-    // Image: REPLACE with your face image URL (must be CORS-accessible if hosted elsewhere)
-    const imgSrc = 'Picture3.jpg';
     const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = imgSrc;
+    img.src = "Picture3.jpg"; // 👈 Put your image file in same folder OR replace with an online URL
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let drawnRects = [], tempRect = null, drawing = false, startX, startY;
 
-    // local state
-    let tempRect = null;
-    let drawnRects = []; // local student rectangles [{x,y,w,h,label}]
-    let drawing = false;
-    let startX = 0, startY = 0;
-
-    // draw function
-    function redraw(avgEyes=null, avgMouth=null) {
-      ctx.clearRect(0,0,canvas.width, canvas.height);
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      // local drawn rects (outline)
       drawnRects.forEach(r => {
-        ctx.strokeStyle = r.label === 'eyes' ? 'blue' : 'red';
+        ctx.strokeStyle = r.label === "eyes" ? "blue" : "red";
         ctx.lineWidth = 2;
         ctx.strokeRect(r.x, r.y, r.w, r.h);
       });
-
-      // preview rect if any
       if (tempRect) {
-        ctx.setLineDash([6]);
-        ctx.strokeStyle = tempRect.label === 'eyes' ? 'blue' : 'red';
+        ctx.setLineDash([5]);
+        ctx.strokeStyle = tempRect.label === "eyes" ? "blue" : "red";
         ctx.strokeRect(tempRect.x, tempRect.y, tempRect.w, tempRect.h);
         ctx.setLineDash([]);
       }
-
-      // averaged overlays (thicker)
-      if (avgEyes) {
-        ctx.strokeStyle = 'blue';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(avgEyes.x, avgEyes.y, avgEyes.w, avgEyes.h);
-      }
-      if (avgMouth) {
-        ctx.strokeStyle = 'red';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(avgMouth.x, avgMouth.y, avgMouth.w, avgMouth.h);
-      }
     }
 
-    // mouse events (works when canvas size in CSS equals width/height attributes)
-    canvas.addEventListener('mousedown', (e) => {
-      drawing = true;
-      startX = e.offsetX;
-      startY = e.offsetY;
-    });
+    img.onload = () => redraw();
 
-    canvas.addEventListener('mousemove', (e) => {
+    canvas.addEventListener("mousedown", e => {
+      drawing = true; startX = e.offsetX; startY = e.offsetY;
+    });
+    canvas.addEventListener("mousemove", e => {
       if (!drawing) return;
-      const x = Math.min(startX, e.offsetX);
-      const y = Math.min(startY, e.offsetY);
-      const w = Math.abs(e.offsetX - startX);
-      const h = Math.abs(e.offsetY - startY);
-      const label = drawnRects.length === 0 ? 'eyes' : 'mouth';
-      tempRect = { x, y, w, h, label };
-      redraw();
+      const x = Math.min(startX, e.offsetX), y = Math.min(startY, e.offsetY);
+      const w = Math.abs(e.offsetX - startX), h = Math.abs(e.offsetY - startY);
+      const label = drawnRects.length === 0 ? "eyes" : "mouth";
+      tempRect = { x, y, w, h, label }; redraw();
     });
-
-    canvas.addEventListener('mouseup', (e) => {
+    canvas.addEventListener("mouseup", () => {
       if (!drawing) return;
       drawing = false;
       if (!tempRect) return;
-      drawnRects.push(tempRect);
-      tempRect = null;
-      redraw();
-      // if they already drew 2 rects, disable drawing further
-      if (drawnRects.length >= 2) {
-        // no-op (they can clear or submit)
-      }
+      drawnRects.push(tempRect); tempRect = null; redraw();
     });
 
-    clearBtn.addEventListener('click', () => {
-      drawnRects = [];
-      tempRect = null;
-      redraw();
-    });
-
-    submitBtn.addEventListener('click', () => {
-      if (drawnRects.length < 2) { alert('Draw eyes and mouth before submitting.'); return; }
-      // push to database
-      const ref = db.ref('annotations').push();
-      ref.set(drawnRects).then(() => {
-        drawnRects = []; tempRect = null; redraw();
-        alert('Submitted — thanks!');
-      }).catch(err => { alert('Submit failed: ' + err.message); });
-    });
-
-    // Listen live for averages
-    db.ref('annotations').on('value', snapshot => {
-      const data = snapshot.val() || {};
-      const all = Object.values(data);
-      let eyesList = [], mouthList = [];
-      all.forEach(arr => {
-        arr.forEach(r => {
-          if (r.label === 'eyes') eyesList.push(r);
-          else mouthList.push(r);
-        });
-      });
-
-      function avg(list) {
-        if (list.length === 0) return null;
-        const x = list.reduce((s,r)=>s+r.x,0)/list.length;
-        const y = list.reduce((s,r)=>s+r.y,0)/list.length;
-        const w = list.reduce((s,r)=>s+r.w,0)/list.length;
-        const h = list.reduce((s,r)=>s+r.h,0)/list.length;
-        return { x, y, w, h };
-      }
-
-      const avgEyes = avg(eyesList);
-      const avgMouth = avg(mouthList);
-      statusSpan.textContent = `${all.length} submissions`;
-      redraw(avgEyes, avgMouth);
-    });
-
-    // draw after image loads
-    img.onload = () => { redraw(); };
+    document.getElementById("clear").onclick = () => { drawnRects = []; redraw(); };
+    document.getElementById("download").onclick = () => {
+      const data = JSON.stringify(drawnRects, null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "rectangles.json";
+      a.click();
+    };
   </script>
 </body>
 </html>
-
-
-
