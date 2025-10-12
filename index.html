@@ -2,11 +2,11 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Face Annotation (Local Only)</title>
+  <title>Face Annotation (Screen-Independent)</title>
   <style>
     body { font-family: sans-serif; text-align:center; padding:20px; }
     canvas { border:1px solid #999; display:block; margin:10px auto; }
-    button { margin:5px; padding:8px 12px; }
+    button { margin:5px; padding:8px 12px; font-size:16px; }
   </style>
 </head>
 <body>
@@ -17,19 +17,26 @@
 
   <script>
     const img = new Image();
-    img.src = "Picture3.jpg"; // 👈 Put your image file in same folder OR replace with an online URL
+    img.src = "Picture3.jpg"; // 👈 Place your image in same folder OR use an online URL
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-    let drawnRects = [], tempRect = null, drawing = false, startX, startY;
 
+    let drawnRects = [];
+    let tempRect = null;
+    let drawing = false;
+    let startX, startY;
+
+    // Draw everything
     function redraw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
       drawnRects.forEach(r => {
         ctx.strokeStyle = r.label === "eyes" ? "blue" : "red";
         ctx.lineWidth = 2;
         ctx.strokeRect(r.x, r.y, r.w, r.h);
       });
+
       if (tempRect) {
         ctx.setLineDash([5]);
         ctx.strokeStyle = tempRect.label === "eyes" ? "blue" : "red";
@@ -40,26 +47,50 @@
 
     img.onload = () => redraw();
 
+    // Mouse events
     canvas.addEventListener("mousedown", e => {
-      drawing = true; startX = e.offsetX; startY = e.offsetY;
-    });
-    canvas.addEventListener("mousemove", e => {
-      if (!drawing) return;
-      const x = Math.min(startX, e.offsetX), y = Math.min(startY, e.offsetY);
-      const w = Math.abs(e.offsetX - startX), h = Math.abs(e.offsetY - startY);
-      const label = drawnRects.length === 0 ? "eyes" : "mouth";
-      tempRect = { x, y, w, h, label }; redraw();
-    });
-    canvas.addEventListener("mouseup", () => {
-      if (!drawing) return;
-      drawing = false;
-      if (!tempRect) return;
-      drawnRects.push(tempRect); tempRect = null; redraw();
+      drawing = true;
+      startX = e.offsetX;
+      startY = e.offsetY;
     });
 
-    document.getElementById("clear").onclick = () => { drawnRects = []; redraw(); };
+    canvas.addEventListener("mousemove", e => {
+      if (!drawing) return;
+
+      const x = Math.min(startX, e.offsetX);
+      const y = Math.min(startY, e.offsetY);
+      const w = Math.abs(e.offsetX - startX);
+      const h = Math.abs(e.offsetY - startY);
+      const label = drawnRects.length === 0 ? "eyes" : "mouth";
+      tempRect = { x, y, w, h, label };
+      redraw();
+    });
+
+    canvas.addEventListener("mouseup", () => {
+      if (!drawing || !tempRect) return;
+      drawing = false;
+      drawnRects.push(tempRect);
+      tempRect = null;
+      redraw();
+    });
+
+    // Clear button
+    document.getElementById("clear").onclick = () => {
+      drawnRects = [];
+      redraw();
+    };
+
+    // Download button with normalized coordinates
     document.getElementById("download").onclick = () => {
-      const data = JSON.stringify(drawnRects, null, 2);
+      const normalized = drawnRects.map(r => ({
+        x: r.x / canvas.width,
+        y: r.y / canvas.height,
+        w: r.w / canvas.width,
+        h: r.h / canvas.height,
+        label: r.label
+      }));
+
+      const data = JSON.stringify(normalized, null, 2);
       const blob = new Blob([data], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -69,3 +100,4 @@
   </script>
 </body>
 </html>
+
