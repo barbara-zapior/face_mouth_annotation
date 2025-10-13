@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Face Annotation (Mobile-Friendly)</title>
+<title>Face Annotation (Mobile Fixed)</title>
 <style>
   body { text-align:center; font-family:Arial,sans-serif; margin:0; padding:1em; background:#f8f9fa; }
   canvas { border:2px solid #555; touch-action:none; max-width:100%; height:auto; }
@@ -21,10 +21,13 @@
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const img = new Image();
-img.src = "Picture3.jpg"; // put your image in the same folder
+img.src = "Picture3.jpg"; // put your image here
 
 const rects = [];
 let startX, startY, isDrawing = false;
+
+const labels = ["eyes", "mouth"];
+let currentLabelIndex = 0; // track which rectangle is next
 
 function getPos(e){
   const rect = canvas.getBoundingClientRect();
@@ -47,49 +50,54 @@ function redraw(){
   });
 }
 
+// --- Helper to push rectangle and switch label ---
+function pushRect(x, y, w, h){
+  if(currentLabelIndex >= labels.length) return;
+  rects.push({x, y, w, h, label: labels[currentLabelIndex]});
+  currentLabelIndex++;
+  redraw();
+}
+
 // --- Mouse Events ---
-canvas.addEventListener("mousedown", e => {
+canvas.addEventListener("mousedown", e=>{
   const pos = getPos(e);
   startX = pos.x; startY = pos.y; isDrawing=true;
 });
-canvas.addEventListener("mousemove", e => {
+canvas.addEventListener("mousemove", e=>{
   if(!isDrawing) return;
   const pos = getPos(e);
   redraw();
   ctx.setLineDash([6]);
-  ctx.strokeStyle = rects.length===0?"blue":"red";
+  ctx.strokeStyle = labels[currentLabelIndex] === "eyes" ? "blue" : "red";
   ctx.lineWidth = 2;
   ctx.strokeRect(startX,startY,pos.x-startX,pos.y-startY);
   ctx.setLineDash([]);
 });
-canvas.addEventListener("mouseup", e => {
+canvas.addEventListener("mouseup", e=>{
   if(!isDrawing) return;
   isDrawing=false;
   const pos = getPos(e);
-  const w = pos.x-startX; const h = pos.y-startY;
-  const label = rects.length===0?"eyes":"mouth";
-  rects.push({x:startX,y:startY,w,h,label});
-  redraw();
+  pushRect(startX, startY, pos.x-startX, pos.y-startY);
 });
 
 // --- Touch Events ---
-canvas.addEventListener("touchstart", e => {
+canvas.addEventListener("touchstart", e=>{
   e.preventDefault();
   const pos = getPos(e);
   startX = pos.x; startY = pos.y; isDrawing=true;
 });
-canvas.addEventListener("touchmove", e => {
+canvas.addEventListener("touchmove", e=>{
   e.preventDefault();
   if(!isDrawing) return;
   const pos = getPos(e);
   redraw();
   ctx.setLineDash([6]);
-  ctx.strokeStyle = rects.length===0?"blue":"red";
+  ctx.strokeStyle = labels[currentLabelIndex] === "eyes" ? "blue" : "red";
   ctx.lineWidth = 2;
   ctx.strokeRect(startX,startY,pos.x-startX,pos.y-startY);
   ctx.setLineDash([]);
 });
-canvas.addEventListener("touchend", e => {
+canvas.addEventListener("touchend", e=>{
   e.preventDefault();
   if(!isDrawing) return;
   isDrawing=false;
@@ -99,14 +107,17 @@ canvas.addEventListener("touchend", e => {
     x: (touch.clientX - rect.left)*(canvas.width/rect.width),
     y: (touch.clientY - rect.top)*(canvas.height/rect.height)
   };
-  const w = pos.x-startX; const h = pos.y-startY;
-  const label = rects.length===0?"eyes":"mouth";
-  rects.push({x:startX,y:startY,w,h,label});
-  redraw();
+  pushRect(startX, startY, pos.x-startX, pos.y-startY);
 });
 
 // --- Undo ---
-document.getElementById("undo").onclick = ()=>{ rects.pop(); redraw(); };
+document.getElementById("undo").onclick = ()=>{
+  if(rects.length > 0){
+    rects.pop();
+    currentLabelIndex = Math.min(currentLabelIndex, labels.length-1);
+    redraw();
+  }
+};
 
 // --- Download JSON ---
 document.getElementById("download").onclick = ()=>{
@@ -117,12 +128,16 @@ document.getElementById("download").onclick = ()=>{
     h: r.h/canvas.height,
     label: r.label
   }));
-  const json={canvas_width:canvas.width,canvas_height:canvas.height,normalized_rects:normalized};
-  const blob=new Blob([JSON.stringify(json,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="annotation.json";
+  const json = {
+    canvas_width: canvas.width,
+    canvas_height: canvas.height,
+    normalized_rects: normalized
+  };
+  const blob = new Blob([JSON.stringify(json,null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "annotation.json";
   a.click();
   URL.revokeObjectURL(url);
 };
