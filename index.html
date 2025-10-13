@@ -152,7 +152,11 @@ document.getElementById('clearBtn').onclick = () => {
 };
 
 document.getElementById('downloadBtn').onclick = () => {
-  const data = JSON.stringify(rects, null, 2);
+  const data = JSON.stringify({
+  canvas_width: canvas.width,
+  canvas_height: canvas.height,
+  rects: rects
+}, null, 2);
   const blob = new Blob([data], {type: "application/json"});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -162,3 +166,4 @@ document.getElementById('downloadBtn').onclick = () => {
 </script>
 </body>
 </html>
+
