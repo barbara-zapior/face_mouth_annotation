@@ -1,134 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Face Annotation</title>
-  <style>
-    body {
-      text-align: center;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 1em;
-      background: #f8f9fa;
-    }
-    canvas {
-      border: 2px solid #555;
-      touch-action: none; /* prevent scrolling while drawing */
-      max-width: 100%;
-      height: auto;
-    }
-    button {
-      margin: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: none;
-      background: #007bff;
-      color: white;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Face Annotation</title>
+<style>
+  body { text-align:center; font-family:Arial,sans-serif; margin:0; padding:1em; background:#f8f9fa; }
+  canvas { border:2px solid #555; touch-action:none; max-width:100%; height:auto; }
+  button { margin:10px; padding:10px 20px; font-size:16px; border-radius:8px; border:none; background:#007bff; color:white; }
+  button:hover { background:#0056b3; }
+</style>
 </head>
 <body>
-  <h2>Draw rectangle AOIs around eyes and mouth</h2>
-  <canvas id="canvas" width="640" height="480"></canvas><br>
-  <button id="undo">Undo</button>
-  <button id="download">Download JSON</button>
+<h2>Draw rectangle AOIs around eyes and mouth</h2>
+<canvas id="canvas" width="640" height="480"></canvas><br>
+<button id="undo">Undo</button>
+<button id="download">Download JSON</button>
 
-  <script>
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.src = "Picture3.jpg"; // put your image here
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const img = new Image();
+img.src = "Picture3.jpg"; // put your image here
 
-    const rects = [];
-    let startX, startY, isDrawing = false;
+const rects = [];
+let startX, startY, isDrawing = false;
 
-    function getPos(e) {
-      const rect = canvas.getBoundingClientRect();
-      if (e.touches) e = e.touches[0];
-      return {
-        x: (e.clientX - rect.left) * (canvas.width / rect.width),
-        y: (e.clientY - rect.top) * (canvas.height / rect.height)
-      };
-    }
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  if (e.touches) e = e.touches[0];
+  return {
+    x: (e.clientX - rect.left) * (canvas.width / rect.width),
+    y: (e.clientY - rect.top) * (canvas.height / rect.height)
+  };
+}
 
-    img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    function redraw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      rects.forEach(r => {
-        ctx.strokeStyle = r.label === "eyes" ? "blue" : "red";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(r.x, r.y, r.w, r.h);
-      });
-    }
+function redraw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  rects.forEach(r => {
+    ctx.strokeStyle = r.label==="eyes"?"blue":"red";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(r.x,r.y,r.w,r.h);
+  });
+}
 
-    function startDraw(e) {
-      e.preventDefault();
-      const pos = getPos(e);
-      startX = pos.x;
-      startY = pos.y;
-      isDrawing = true;
-    }
+function startDraw(e){ e.preventDefault(); const pos=getPos(e); startX=pos.x; startY=pos.y; isDrawing=true; }
+function moveDraw(e){ if(!isDrawing) return; const pos=getPos(e); redraw(); ctx.setLineDash([6]); ctx.strokeStyle=rects.length===0?"blue":"red"; ctx.lineWidth=2; ctx.strokeRect(startX,startY,pos.x-startX,pos.y-startY); ctx.setLineDash([]); }
+function endDraw(e){ if(!isDrawing) return; isDrawing=false; const pos=getPos(e); const w=pos.x-startX; const h=pos.y-startY; const label=rects.length===0?"eyes":"mouth"; rects.push({x:startX,y:startY,w,h,label}); redraw(); }
 
-    function moveDraw(e) {
-      if (!isDrawing) return;
-      const pos = getPos(e);
-      redraw();
-      ctx.setLineDash([6]);
-      ctx.strokeStyle = rects.length === 0 ? "blue" : "red";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(startX, startY, pos.x - startX, pos.y - startY);
-      ctx.setLineDash([]);
-    }
+canvas.addEventListener("mousedown",startDraw);
+canvas.addEventListener("mousemove",moveDraw);
+canvas.addEventListener("mouseup",endDraw);
+canvas.addEventListener("touchstart",startDraw);
+canvas.addEventListener("touchmove",moveDraw);
+canvas.addEventListener("touchend",endDraw);
 
-    function endDraw(e) {
-      if (!isDrawing) return;
-      isDrawing = false;
-      const pos = getPos(e);
-      const w = pos.x - startX;
-      const h = pos.y - startY;
-      const label = rects.length === 0 ? "eyes" : "mouth";
-      rects.push({ x: startX, y: startY, w, h, label });
-      redraw();
-    }
+document.getElementById("undo").onclick = ()=>{ rects.pop(); redraw(); };
 
-    canvas.addEventListener("mousedown", startDraw);
-    canvas.addEventListener("mousemove", moveDraw);
-    canvas.addEventListener("mouseup", endDraw);
-    canvas.addEventListener("touchstart", startDraw);
-    canvas.addEventListener("touchmove", moveDraw);
-    canvas.addEventListener("touchend", endDraw);
-
-    document.getElementById("undo").onclick = () => { rects.pop(); redraw(); };
-
-    document.getElementById("download").onclick = () => {
-      // Normalize coordinates 0-1
-      const normalized = rects.map(r => ({
-        x: r.x / canvas.width,
-        y: r.y / canvas.height,
-        w: r.w / canvas.width,
-        h: r.h / canvas.height,
-        label: r.label
-      }));
-      const json = {
-        canvas_width: canvas.width,
-        canvas_height: canvas.height,
-        normalized_rects: normalized
-      };
-      const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "annotation.json";
-      a.click();
-      URL.revokeObjectURL(url);
-    };
-  </script>
+document.getElementById("download").onclick = ()=>{
+  const normalized = rects.map(r=>({
+    x: r.x/canvas.width,
+    y: r.y/canvas.height,
+    w: r.w/canvas.width,
+    h: r.h/canvas.height,
+    label: r.label
+  }));
+  const json={canvas_width:canvas.width,canvas_height:canvas.height,normalized_rects:normalized};
+  const blob=new Blob([JSON.stringify(json,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="annotation.json";
+  a.click();
+  URL.revokeObjectURL(url);
+};
+</script>
 </body>
 </html>
