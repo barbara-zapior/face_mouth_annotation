@@ -14,8 +14,8 @@
 <body>
 <h2>Draw rectangle AOIs around eyes and mouth</h2>
 <canvas id="canvas" width="640" height="480"></canvas><br>
-<button id="undo">Undo</button>
 <button id="download">Download JSON</button>
+<p>To start again, refresh the page.</p>
 
 <script>
 const canvas = document.getElementById("canvas");
@@ -109,15 +109,6 @@ canvas.addEventListener("touchend", e=>{
   };
   pushRect(startX, startY, pos.x-startX, pos.y-startY);
 });
-
-// --- Undo ---
-document.getElementById("undo").onclick = ()=>{
-  if(rects.length > 0){
-    rects.pop();
-    currentLabelIndex = Math.min(currentLabelIndex, labels.length-1);
-    redraw();
-  }
-};
 
 // --- Download JSON ---
 document.getElementById("download").onclick = ()=>{
